@@ -1,4 +1,3 @@
-
 import json
 import os
 from datetime import datetime
@@ -28,6 +27,7 @@ app = FastAPI(
 #   Kubernetes can retrieve the secret from AWS Secrets Manager.
 # ============================================================
 
+
 def get_connection() -> psycopg.Connection:
     database_user = os.getenv("POSTGRES_USER")
     database_password = os.getenv("POSTGRES_PASSWORD")
@@ -39,9 +39,7 @@ def get_connection() -> psycopg.Connection:
     database_port = os.getenv("POSTGRES_PORT", "5432")
 
     if not database_user or not database_password or not database_name:
-        raise RuntimeError(
-            "PostgreSQL environment variables are not configured"
-        )
+        raise RuntimeError("PostgreSQL environment variables are not configured")
 
     return psycopg.connect(
         host=database_host,
@@ -50,6 +48,7 @@ def get_connection() -> psycopg.Connection:
         user=database_user,
         password=database_password,
     )
+
 
 # Optional external integration configuration.
 #
@@ -63,11 +62,10 @@ APPLE_CLIENT_ID = os.getenv("APPLE_CLIENT_ID")
 APPLE_CLIENT_SECRET = os.getenv("APPLE_CLIENT_SECRET")
 
 
-
-
 # ============================================================
 # Models
 # ============================================================
+
 
 class Event(BaseModel):
     source: str = Field(min_length=1, max_length=50)
@@ -81,6 +79,7 @@ class Event(BaseModel):
 # Health / readiness
 # ============================================================
 
+
 @app.get("/health")
 def health():
     """
@@ -89,9 +88,7 @@ def health():
     Does not require PostgreSQL to be available.
     """
 
-    return {
-        "status": "ok"
-    }
+    return {"status": "ok"}
 
 
 @app.get("/ready")
@@ -122,15 +119,13 @@ def ready():
 # Generic ingestion
 # ============================================================
 
+
 @app.post("/ingest/event")
 def ingest_event(event: Event):
 
     try:
-
         with get_connection() as conn:
-
             with conn.cursor() as cur:
-
                 cur.execute(
                     """
                     INSERT INTO raw_events
@@ -174,6 +169,7 @@ def ingest_event(event: Event):
 # WHOOP ingestion
 # ============================================================
 
+
 @app.post("/ingest/whoop")
 def ingest_whoop(event: Event):
 
@@ -189,6 +185,7 @@ def ingest_whoop(event: Event):
 # ============================================================
 # Apple ingestion
 # ============================================================
+
 
 @app.post("/ingest/apple")
 def ingest_apple(event: Event):
@@ -210,20 +207,18 @@ def ingest_apple(event: Event):
 # It only tells us whether required configuration exists.
 # ============================================================
 
+
 @app.get("/config/status")
 def config_status():
 
     return {
         "database_configured": bool(os.getenv("DATABASE_URL")),
-
         "whoop": {
             "client_id_configured": bool(WHOOP_CLIENT_ID),
             "client_secret_configured": bool(WHOOP_CLIENT_SECRET),
         },
-
         "apple": {
             "client_id_configured": bool(APPLE_CLIENT_ID),
             "client_secret_configured": bool(APPLE_CLIENT_SECRET),
         },
     }
-
