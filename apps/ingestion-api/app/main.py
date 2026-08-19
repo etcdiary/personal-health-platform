@@ -29,7 +29,7 @@ app = FastAPI(
 # ============================================================
 
 def get_connection() -> psycopg.Connection:
-    database_url = os.getenv("DATABASE_URL")
+    database_url = os.getenv("DATABASE_URL")            
 
     if not database_url:
         raise RuntimeError(
@@ -51,12 +51,6 @@ APPLE_CLIENT_ID = os.getenv("APPLE_CLIENT_ID")
 APPLE_CLIENT_SECRET = os.getenv("APPLE_CLIENT_SECRET")
 
 
-# ============================================================
-# Database
-# ============================================================
-
-def get_connection():
-    return psycopg.connect(DATABASE_URL)
 
 
 # ============================================================
