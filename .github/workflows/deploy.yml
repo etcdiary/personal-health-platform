@@ -34,17 +34,27 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest httpx ruff
+           python -m pip install --upgrade pip
+           pip install -r requirements.txt
+           pip install pytest httpx ruff
 
       - name: Lint
-        run: ruff check .
+        working-directory: apps/ingestion-api
+        run: |
+            ruff check .
+            ruff format --check .
+      - name: Install dependencies
+        working-directory: apps/ingestion-api
+        run: |
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+            pip install ruff
 
     #   - name: Format check
     #     run: ruff format --check .
 
       - name: Run tests
+        working-directory: apps/ingestion-api
         run: pytest -v
 
   build-and-push:

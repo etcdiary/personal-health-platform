@@ -29,15 +29,27 @@ app = FastAPI(
 # ============================================================
 
 def get_connection() -> psycopg.Connection:
-    database_url = os.getenv("DATABASE_URL")            
+    database_user = os.getenv("POSTGRES_USER")
+    database_password = os.getenv("POSTGRES_PASSWORD")
+    database_name = os.getenv("POSTGRES_DB")
+    database_host = os.getenv(
+        "POSTGRES_HOST",
+        "postgres.data.svc.cluster.local",
+    )
+    database_port = os.getenv("POSTGRES_PORT", "5432")
 
-    if not database_url:
+    if not database_user or not database_password or not database_name:
         raise RuntimeError(
-            "DATABASE_URL environment variable is not configured"
+            "PostgreSQL environment variables are not configured"
         )
 
-    return psycopg.connect(database_url)
-
+    return psycopg.connect(
+        host=database_host,
+        port=database_port,
+        dbname=database_name,
+        user=database_user,
+        password=database_password,
+    )
 
 # Optional external integration configuration.
 #
