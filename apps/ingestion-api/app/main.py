@@ -14,7 +14,6 @@ app = FastAPI(
     version="0.1.0",
 )
 
-
 # ============================================================
 # Configuration
 #
@@ -104,7 +103,7 @@ def ready():
             "database": "ok",
         }
 
-    except Exception:
+    except psycopg.Error:
         raise HTTPException(
             status_code=503,
             detail="database unavailable",
@@ -156,7 +155,7 @@ def ingest_event(event: Event):
             "event_id": event_id,
         }
 
-    except Exception:
+    except psycopg.Error:
         raise HTTPException(
             status_code=500,
             detail="failed to store event",
