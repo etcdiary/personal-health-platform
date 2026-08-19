@@ -28,12 +28,15 @@ app = FastAPI(
 #   Kubernetes can retrieve the secret from AWS Secrets Manager.
 # ============================================================
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+def get_connection() -> psycopg.Connection:
+    database_url = os.getenv("DATABASE_URL")
 
-if not DATABASE_URL:
-    raise RuntimeError(
-        "DATABASE_URL environment variable is not configured"
-    )
+    if not database_url:
+        raise RuntimeError(
+            "DATABASE_URL environment variable is not configured"
+        )
+
+    return psycopg.connect(database_url)
 
 
 # Optional external integration configuration.
@@ -205,7 +208,7 @@ def ingest_apple(event: Event):
 def config_status():
 
     return {
-        "database_configured": bool(DATABASE_URL),
+        "database_configured": bool(os.getenv("DATABASE_URL")),
 
         "whoop": {
             "client_id_configured": bool(WHOOP_CLIENT_ID),
