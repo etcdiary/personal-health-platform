@@ -8,7 +8,6 @@ import psycopg
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-
 app = FastAPI(
     title="Health Data Ingestion API",
     version="0.1.0",

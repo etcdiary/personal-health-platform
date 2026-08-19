@@ -41,6 +41,9 @@ jobs:
       - name: Lint
         run: ruff check .
 
+      - name: Format check
+        run: ruff format --check .
+
       - name: Run tests
         run: pytest -v
 
