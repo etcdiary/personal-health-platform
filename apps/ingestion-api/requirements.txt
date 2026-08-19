@@ -4,5 +4,5 @@ psycopg[binary]
 pydantic
 pydantic-settings
 python-dotenv
-httpx
+httpx2
 pytest
