@@ -1,7 +1,10 @@
-import pytest
-from fastapi.testclient import TestClient
 
+from unittest.mock import MagicMock
+
+import psycopg
+import pytest
 from app.main import app
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
@@ -61,3 +64,36 @@ def test_apple_rejects_wrong_source(client):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "source must be 'apple'"
+
+
+def test_duplicate_event_returns_409(client, monkeypatch):
+    fake_connection = MagicMock()
+    fake_cursor = MagicMock()
+
+    fake_connection.__enter__.return_value = fake_connection
+    fake_connection.cursor.return_value.__enter__.return_value = fake_cursor
+
+    fake_cursor.execute.side_effect = psycopg.errors.UniqueViolation(
+        "duplicate key value violates unique constraint"
+    )
+
+    monkeypatch.setattr(
+        "app.main.get_connection",
+        lambda: fake_connection,
+    )
+
+    response = client.post(
+        "/ingest/event",
+        json={
+            "source": "apple",
+            "event_type": "heart_rate",
+            "external_id": "apple-test-001",
+            "payload": {
+                "heart_rate": 68,
+            },
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "event already exists"
+

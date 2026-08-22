@@ -112,9 +112,9 @@ def ready():
         raise HTTPException(
             status_code=503,
             detail="database unavailable",
+        
         )
-
-
+ 
 # ============================================================
 # Generic ingestion
 # ============================================================
@@ -157,7 +157,11 @@ def ingest_event(event: Event):
             "status": "accepted",
             "event_id": event_id,
         }
-
+    except psycopg.errors.UniqueViolation:
+        raise HTTPException(
+            status_code=409,
+            detail="event already exists",
+        )
     except psycopg.Error:
         raise HTTPException(
             status_code=500,
@@ -210,9 +214,16 @@ def ingest_apple(event: Event):
 
 @app.get("/config/status")
 def config_status():
+    database_configured = all(
+        [
+            os.getenv("POSTGRES_USER"),
+            os.getenv("POSTGRES_PASSWORD"),
+            os.getenv("POSTGRES_DB"),
+        ]
+    )
 
     return {
-        "database_configured": bool(os.getenv("DATABASE_URL")),
+        "database_configured": database_configured,
         "whoop": {
             "client_id_configured": bool(WHOOP_CLIENT_ID),
             "client_secret_configured": bool(WHOOP_CLIENT_SECRET),
