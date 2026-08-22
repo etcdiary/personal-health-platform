@@ -12,19 +12,9 @@ app = FastAPI(
     version="0.1.0",
 )
 
+
 # ============================================================
-# Configuration
-#
-# DO NOT put passwords, API keys, OAuth secrets, or tokens here.
-#
-# Local development:
-#   export DATABASE_URL="postgresql://..."
-#
-# Kubernetes:
-#   Inject DATABASE_URL from a Kubernetes Secret.
-#
-# Production AWS:
-#   Kubernetes can retrieve the secret from AWS Secrets Manager.
+# Database connection
 # ============================================================
 
 
@@ -50,10 +40,13 @@ def get_connection() -> psycopg.Connection:
     )
 
 
-# Optional external integration configuration.
+# ============================================================
+# Optional external integration configuration
 #
-# These are intentionally read from environment variables so
-# secrets never need to be committed to Git.
+# Secrets are read from environment variables and are never
+# returned by the API.
+# ============================================================
+
 
 WHOOP_CLIENT_ID = os.getenv("WHOOP_CLIENT_ID")
 WHOOP_CLIENT_SECRET = os.getenv("WHOOP_CLIENT_SECRET")
@@ -116,12 +109,71 @@ def ready():
 
 
 # ============================================================
+# Apple normalization
+# ============================================================
+
+
+def normalize_apple_event(cur, event: Event):
+    """
+    Normalize supported Apple events into health_measurements.
+
+    Raw events remain stored in raw_events as the source of truth.
+    """
+
+    if event.event_type != "heart_rate":
+        return
+
+    heart_rate = event.payload.get("heart_rate")
+    unit = event.payload.get("unit")
+
+    if heart_rate is None:
+        raise HTTPException(
+            status_code=400,
+            detail="heart_rate is required",
+        )
+
+    if event.recorded_at is None:
+        raise HTTPException(
+            status_code=400,
+            detail="recorded_at is required",
+        )
+
+    cur.execute(
+        """
+        INSERT INTO health_measurements
+            (
+                source,
+                metric,
+                value,
+                unit,
+                recorded_at
+            )
+        VALUES
+            (%s, %s, %s, %s, %s)
+        """,
+        (
+            event.source,
+            "heart_rate",
+            heart_rate,
+            unit,
+            event.recorded_at,
+        ),
+    )
+
+
+# ============================================================
 # Generic ingestion
 # ============================================================
 
 
 @app.post("/ingest/event")
-def ingest_event(event: Event):
+def ingest_event(event: Event, normalize: bool = False):
+    """
+    Store an event in raw_events.
+
+    If normalize=True, source-specific normalization is performed
+    in the same PostgreSQL transaction.
+    """
 
     try:
         with get_connection() as conn:
@@ -151,17 +203,22 @@ def ingest_event(event: Event):
 
                 event_id = cur.fetchone()[0]
 
+                if normalize:
+                    normalize_apple_event(cur, event)
+
             conn.commit()
 
         return {
             "status": "accepted",
             "event_id": event_id,
         }
+
     except psycopg.errors.UniqueViolation:
         raise HTTPException(
             status_code=409,
             detail="event already exists",
         )
+
     except psycopg.Error:
         raise HTTPException(
             status_code=500,
@@ -176,6 +233,11 @@ def ingest_event(event: Event):
 
 @app.post("/ingest/whoop")
 def ingest_whoop(event: Event):
+    """
+    WHOOP-specific ingestion endpoint.
+
+    WHOOP events are currently stored as raw events only.
+    """
 
     if event.source.lower() != "whoop":
         raise HTTPException(
@@ -193,6 +255,12 @@ def ingest_whoop(event: Event):
 
 @app.post("/ingest/apple")
 def ingest_apple(event: Event):
+    """
+    Apple-specific ingestion endpoint.
+
+    Apple events are stored in raw_events and supported events
+    are normalized into health_measurements.
+    """
 
     if event.source.lower() != "apple":
         raise HTTPException(
@@ -200,7 +268,7 @@ def ingest_apple(event: Event):
             detail="source must be 'apple'",
         )
 
-    return ingest_event(event)
+    return ingest_event(event, normalize=True)
 
 
 # ============================================================
@@ -208,7 +276,7 @@ def ingest_apple(event: Event):
 #
 # IMPORTANT:
 # This endpoint NEVER returns secret values.
-# It only tells us whether required configuration exists.
+# It only reports whether required configuration exists.
 # ============================================================
 
 
