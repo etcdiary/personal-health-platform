@@ -2,9 +2,8 @@ from unittest.mock import MagicMock
 
 import psycopg
 import pytest
-from fastapi.testclient import TestClient
-
 from app.main import app
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
@@ -96,4 +95,3 @@ def test_duplicate_event_returns_409(client, monkeypatch):
 
     assert response.status_code == 409
     assert response.json()["detail"] == "event already exists"
-
