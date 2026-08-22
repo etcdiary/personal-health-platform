@@ -3,8 +3,9 @@ from unittest.mock import MagicMock
 
 import psycopg
 import pytest
-from app.main import app
 from fastapi.testclient import TestClient
+from app.main import app
+
 
 
 @pytest.fixture
